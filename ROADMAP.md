@@ -28,12 +28,12 @@ the items it did not build.
 | 9 | Prediction + uncertainty | `COMPLETE` |
 | 10 | Intervention policy | `COMPLETE` |
 | 11 | Outcome engine | `COMPLETE` |
-| 12 | Feedback architecture | `NOT STARTED` |
+| 12 | Feedback architecture | `COMPLETE` |
 | 13 | Evaluation framework | `PARTIAL` (core framework complete; split construction and advanced metrics planned) |
 | 14 | API | `NOT STARTED` (development-only lab surface exists at `api/lab/` — deterministic, dev-only delivery, no auth, not the production API) |
 | 15 | Security / privacy hardening & Student Intelligence | `COMPLETE` (security foundations in Phase 1; deep student intelligence & evidence reasoning completed) |
 | 16 | Documentation + technical inventory | `PARTIAL` |
-| — | Foundation status report | `NOT STARTED` |
+| — | Foundation status report | `COMPLETE` (`FOUNDATION_STATUS.md`) |
 | — | Cross-phase clock determinism (defect in Phase 8/9 code) | `COMPLETE` |
 
 ---
@@ -894,17 +894,38 @@ establishes nothing about any real learner.
 
 ---
 
-## Phase 12 — Feedback architecture `NOT STARTED`
+## Phase 12 — Feedback architecture `COMPLETE`
 
-Accumulate observed intervention response per learner and intervention type, and feed it
-back into selection.
+Accumulates observed intervention response per learner, intervention type, and context, then
+allows response profiles to adjust candidate order only after a minimum evidence threshold.
 
-**Exit criteria**
-- Response profile keyed by learner, intervention type, and context.
-- Below `min_response_observations`, response data is recorded but not used to select.
-- No automatic production retraining from live data; retraining is controlled, versioned,
-  evaluated, reproducible, and approved.
-- Tests: profile accumulation, minimum-observation gating, no implicit retraining.
+**Delivered**
+- `feedback/models.py` — `FEEDBACK_V1`, immutable intervention response observations,
+  response profile synthesis, maturity states, and strict rate/count consistency validation.
+- `feedback/engine.py` — `FeedbackEngine`, outcome-to-observation conversion, profile
+  accumulation, minimum-observation gating, and active-profile candidate reordering.
+- `feedback/__init__.py` — public package surface.
+- `schemas/versioning.py` — `FeedbackVersion` added to the shared version vocabulary.
+- `tests/unit/feedback/` — profile invariants, accumulation, gating, no-retraining, and
+  static import boundary coverage.
+- `tests/integration/test_feedback_integration.py` — outcome record integration coverage.
+
+**Exit criteria — met**
+- Response profiles are keyed by learner, intervention type, and context.
+- Below `min_response_observations`, observations are retained but profiles remain
+  `COLLECTING`, expose no effective success rate, and do not alter candidate order.
+- `FeedbackEngine.retrain_model_from_feedback()` structurally raises `NotImplementedError`;
+  production retraining remains an offline, controlled, versioned, evaluated, and approved
+  workflow outside this layer.
+- Unit and integration tests cover profile accumulation, maturity transition, gating, derived
+  outcome observations, static boundaries, and prohibited implicit retraining.
+
+**What this does not establish**
+Response profiles summarize observed post-delivery behaviour; they do not establish that an
+intervention caused a change. The current corpus is synthetic, so active profile rates describe
+the simulator's generative assumptions rather than real learner behaviour. Feedback can adjust
+candidate order only; it cannot select an intervention, bypass policy or authority safeguards,
+or update a model artifact.
 
 ---
 

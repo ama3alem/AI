@@ -33,10 +33,11 @@ __all__ = [
     "BaselineVersion",
     "CodeVersion",
     "DatasetVersion",
+    "EvaluationVersion",
     "ExperimentConclusion",
     "ExperimentRecord",
-    "EvaluationVersion",
     "FeatureSetVersion",
+    "FeedbackVersion",
     "ModelMetrics",
     "ModelRecord",
     "ModelStatus",
@@ -119,6 +120,8 @@ OutcomeVersion = Annotated[str, AfterValidator(_validate_version)]
 #: vocabulary, the horizon rule, and the evidence gate are therefore frozen together under
 #: one identifier.
 EvaluationVersion = Annotated[str, AfterValidator(_validate_version)]
+#: Identifies a specific, frozen set of feedback and response profile definitions.
+FeedbackVersion = Annotated[str, AfterValidator(_validate_version)]
 #: Identifies a specific, frozen dataset artifact.
 DatasetVersion = Annotated[str, AfterValidator(_validate_version)]
 #: Identifies a specific trained model artifact.
