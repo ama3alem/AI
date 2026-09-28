@@ -1,0 +1,92 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "focus-intelligence-engine"
+version = "0.1.0"
+description = "A behavioral intelligence system for digital learning: personalized, temporal, contextual, uncertainty-aware, intervention-based, outcome-driven."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+
+# ---------------------------------------------------------------------------
+# Runtime dependencies — minimal and justified.
+# Cloud provider SDKs and hosted-LLM SDKs are deliberately absent (§6).
+# ---------------------------------------------------------------------------
+dependencies = [
+    "numpy>=1.26",           # numeric core: features, baseline statistics, simulation
+    "pandas>=2.2",           # tabular feature frames and evaluation matrices
+    "scikit-learn>=1.4",     # Phase 8 classical ML + calibration + metrics
+    "pydantic>=2.7",         # runtime validation of every event and API payload
+    "pydantic-settings>=2.2", # env-var-sourced configuration and secret handling (no defaults for secrets)
+    "fastapi>=0.111",        # Phase 14 API boundary wrapping the real engine
+    "uvicorn>=0.30",         # local ASGI runner
+    "joblib>=1.3",           # model/artifact serialization
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",           # FastAPI TestClient transport
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/focus_engine"]
+
+# ---------------------------------------------------------------------------
+# Tooling configuration
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-q --strict-markers --strict-config"
+markers = [
+    "unit: isolated component tests",
+    "integration: multi-component tests",
+    "simulation: synthetic simulator tests",
+    "evaluation: evaluation-framework tests",
+    "slow: long-running tests",
+]
+filterwarnings = ["error::DeprecationWarning:focus_engine.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "api", "training", "evaluation"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RET", "ARG", "PTH", "TID"]
+ignore = [
+    "E501",    # line length handled by the formatter
+    "B008",    # pydantic Field(...) in defaults is idiomatic
+    "N803", "N806",  # model field names are intentionally snake_case
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ARG001", "ARG002", "SIM117"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["focus_engine"]
+
+[tool.mypy]
+# Type checking targets the interpreter the suite actually runs on (3.12). numpy 2.5's
+# bundled stubs use 3.12 `type` statement syntax, so checking against 3.11 fails inside
+# the dependency rather than in our code. `requires-python` stays at 3.11 for
+# portability, but 3.11 is NOT yet verified — see ROADMAP.md.
+python_version = "3.12"
+# Only directories that currently contain code are type-checked. `api`, `training`, and
+# `evaluation` join this list in the phases that create them; listing an empty or absent
+# directory makes mypy fail rather than check nothing.
+files = ["src"]
+strict = true
+warn_unreachable = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pandas.*", "sklearn.*", "joblib.*", "fastapi.*"]
+ignore_missing_imports = true

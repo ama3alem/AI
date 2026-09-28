@@ -1,0 +1,42 @@
+# Focus Intelligence Engine — pinned runtime dependencies
+#
+# `pyproject.toml` is the source of truth for version *constraints*.
+# This file records the exact versions the Phase 1 verification gate was run against,
+# so that a future run can reproduce it.
+#
+# Verified on: Python 3.12.0, Windows, 2026-09-26
+#
+# No cloud provider SDK and no hosted-LLM SDK appears here, by requirement.
+# Regenerate with:
+#   uv pip freeze --python .venv
+
+# --- core numeric -------------------------------------------------------------
+numpy==2.5.3
+pandas==3.0.6
+scipy==1.18.1
+
+# --- validation and configuration --------------------------------------------
+pydantic==2.13.5
+pydantic-core==2.46.5
+pydantic-settings==2.15.0
+annotated-types==0.8.0
+python-dotenv==1.2.3
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+
+# --- classical ML --------------------------------------------------------------
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+
+# --- API boundary --------------------------------------------------------------
+fastapi==0.141.1
+starlette==1.7.0
+uvicorn==0.54.0
+
+# --- development and verification ----------------------------------------------
+pytest==9.1.1
+httpx==0.28.1
+ruff==0.16.9
+mypy==2.3.1
+mypy-extensions==1.1.0

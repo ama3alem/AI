@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------------------
+# Focus Intelligence Engine — .gitignore
+# Secrets must never enter version control.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+credentials/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+
+# Generated / regenerable artifacts (R-03: OneDrive may rewrite these)
+artifacts/
+data/raw/*
+data/processed/*
+data/synthetic/*
+!data/**/.gitkeep
+!data/README.md
+*.joblib
+*.pkl
+
+# Serialised model output only, and only at the repository root. This must stay anchored:
+# an unanchored `models/` also matches the source package `src/focus_engine/models/` and
+# its test package, which silently removed the whole model layer from version control and
+# from the ruff and format gates. A trained model is already covered by `*.joblib` and
+# `*.pkl`; this entry exists only for a scratch directory of a model plus its sidecar.
+/models/
+
+# Logs
+*.log
+logs/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# EduFlow is explicitly out of scope. This engine never imports from it.
+# No path, module, or artifact from EduFlow belongs in this repository.
+eduflow*
