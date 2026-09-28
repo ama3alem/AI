@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Engine Lab</title>
+<!-- Declared inline so the browser never issues an unfulfilled /favicon.ico request.
+     A 404 in the console is indistinguishable, to a reader, from a broken asset. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%236c8cff'/%3E%3Ccircle cx='8' cy='8' r='3.2' fill='%230f1117'/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--border:#2a2d3a;--text:#e0e0e6;
+  --dim:#8a8d9a;--accent:#6c8cff;--good:#34c759;--warn:#ffb84d;
+  --err:#ff4d6a;--purple:#b07cff;--cyan:#4dd9e8;
+}
+body{background:var(--bg);color:var(--text);font:14px/1.6 'Segoe UI',system-ui,sans-serif;min-height:100vh}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:600;margin-bottom:.5rem}
+h3{font-size:.9rem;font-weight:600;margin-bottom:.35rem}
+a{color:var(--accent);text-decoration:none}
+code{font-family:'Cascadia Code','Fira Code',monospace;font-size:.82rem;background:var(--bg);padding:1px 5px;border-radius:3px}
+.container{max-width:1200px;margin:0 auto;padding:24px 20px}
+header{display:flex;align-items:baseline;gap:12px;margin-bottom:28px;border-bottom:1px solid var(--border);padding-bottom:16px}
+header p{color:var(--dim);font-size:.85rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:28px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color .15s}
+.card:hover,.card.selected{border-color:var(--accent)}
+.card h3{color:var(--accent)}
+.card .arch{color:var(--dim);font-size:.8rem;margin-bottom:6px}
+.card .desc{font-size:.82rem;color:var(--dim);line-height:1.45}
+textarea{width:100%;min-height:140px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:monospace;font-size:.82rem;resize:vertical}
+textarea:focus{outline:1px solid var(--accent);border-color:transparent}
+.row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.row input{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem}
+.row input:focus{outline:1px solid var(--accent);border-color:transparent}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:.88rem;font-weight:600;cursor:pointer;transition:opacity .12s}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.secondary{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.hint{color:var(--dim);font-size:.82rem;line-height:1.55;margin:0 0 10px;max-width:78ch}
+.hint code,.entry-row code{font-size:.92em}
+.seedlabel{color:var(--dim);font-size:.78rem;align-self:center;letter-spacing:.04em;text-transform:uppercase}
+.badge{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
+.badge.ok{background:#1a332a;color:var(--good)}
+.badge.warn{background:#332a1a;color:var(--warn)}
+.badge.err{background:#331a1a;color:var(--err)}
+.badge.info{background:#1a2233;color:var(--accent)}
+.badge.off{background:#222;color:var(--dim)}
+.results{margin-top:24px}
+.stage{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s}
+.stage.visible{opacity:1;transform:translateY(0)}
+.stage.pending{opacity:.35}
+.stage-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.stage-head .num{color:var(--dim);font-size:.75rem;font-weight:700;min-width:22px}
+.stage-head h3{margin:0;flex:1}
+.stage-head .badge{margin-left:auto}
+.stage-detail{font-size:.82rem;color:var(--dim);line-height:1.5}
+.stage-detail table{width:100%;border-collapse:collapse;margin-top:8px}
+.stage-detail th,.stage-detail td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);font-size:.8rem}
+.stage-detail th{color:var(--text);font-weight:600}
+.entry{background:var(--bg);border-radius:6px;padding:8px 10px;margin-top:6px;font-size:.78rem;max-height:220px;overflow-y:auto;line-height:1.5}
+.entry-row{display:flex;gap:8px;border-bottom:1px solid var(--border);padding:3px 0}
+.entry-row:last-child{border:none}
+.k{color:var(--dim);min-width:120px}
+.v{color:var(--text)}
+.v.good{color:var(--good)}.v.bad{color:var(--err)}.v.mid{color:var(--warn)}
+.model-info{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:20px}
+.model-info h2{font-size:.95rem}
+.intent{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:10px;padding:16px;margin-bottom:18px}
+.intent h2{font-size:.95rem;color:var(--purple)}
+.intent .side{font-size:.82rem;line-height:1.55;margin-top:6px}
+.intent .label{font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin-top:10px}
+.intent .actual{color:var(--text)}
+.intent .expected{color:var(--dim)}
+.restraint{display:flex;gap:8px;align-items:baseline;margin:2px 0;font-size:.8rem}
+.restraint .k{min-width:140px}
+.unavail{opacity:.55;border-style:dashed}
+.timeline{display:flex;gap:4px;margin-bottom:22px;flex-wrap:wrap}
+.tl-item{font-size:.7rem;font-weight:600;padding:4px 8px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--dim);white-space:nowrap;transition:all .25s}
+.tl-item.active{border-color:var(--accent);color:var(--accent);background:#1a2240}
+.tl-item.done{border-color:var(--good);color:var(--good);background:#1a332a}
+.tl-item.unavail{border-style:dashed;color:var(--dim)}
+.empty{text-align:center;padding:40px;color:var(--dim);font-size:.9rem}
+.row select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem;max-width:380px}
+.row select:focus{outline:1px solid var(--accent);border-color:transparent}
+.intelligence{margin-top:24px}
+.answer-block{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-top:10px}
+.answer-block pre{white-space:pre-wrap;word-break:break-word;font-family:'Cascadia Code','Fira Code',monospace;font-size:.78rem;line-height:1.55;margin-top:8px;color:var(--text);background:var(--bg);border-radius:6px;padding:10px}
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);color:var(--dim);font-size:.78rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>Focus Engine Lab</h1>
+  <p>Development-only local visual pipeline</p>
+</header>
+
+<div>
+  <h2>Scenarios</h2>
+  <div class="grid" id="cards"></div>
+</div>
+
+<div>
+  <h2>Or paste your own JSON</h2>
+  <p class="hint">A native Focus Engine event is an <em>envelope</em> — <code>event_id</code>, <code>learner_id</code>, <code>session_id</code>, <code>timestamp</code>, <code>event_type</code>, and a <code>payload</code> object holding the fields specific to that type. Type-specific fields are <strong>not</strong> valid at the top level. All identifiers must be 8–128 characters of <code>A–Z a–z 0–9 _ -</code>.</p>
+  <textarea id="rawJson" placeholder='{"events": [ ... native event envelopes ... ]}'></textarea>
+  <div class="row" style="margin-top:10px">
+    <input id="learnerId" placeholder="Learner ID (e.g. lab-sample-0001)">
+    <input id="sessionId" placeholder="Session ID (e.g. lab-sample-0001-s01)">
+    <label class="seedlabel" for="seedInput">seed</label>
+    <input id="seedInput" type="number" min="0" value="424242" style="max-width:110px">
+    <button class="btn secondary" onclick="insertCanonicalExample()">Insert canonical example</button>
+    <button class="btn secondary" onclick="generateSampleSession()">Generate Valid Synthetic Session</button>
+    <button class="btn secondary" onclick="validatePaste()">Validate</button>
+    <button class="btn" onclick="analysePaste()">Analyse</button>
+  </div>
+  <div id="validationOutput" style="display:none;margin-top:10px"></div>
+</div>
+
+<div class="results" id="results" style="display:none">
+  <h2>Pipeline</h2>
+  <div class="intent" id="intent" style="display:none"></div>
+  <div class="timeline" id="timeline"></div>
+  <div id="stages"></div>
+  <div class="model-info" id="modelInfo" style="display:none"></div>
+</div>
+
+<div class="intelligence" id="intelligence">
+  <h2>Student Intelligence</h2>
+  <p class="hint">A grounded, inspect-first Q&amp;A over the engine's own evidence for each scenario learner. Role enforcement happens <em>before</em> retrieval: a <code>student</code> only ever sees themselves, and evidence withheld by role is reported as a <code>PRIVILEGE_RESTRICTED</code> gap rather than dropped. Answers re-state the evidence verbatim — nothing is invented, and the synthetic notice travels with every answer.</p>
+  <div class="row" style="margin-top:10px">
+    <select id="intelStore" onchange="refreshLearners()">
+      <option value="canonical">Canonical Scenarios (5 learners)</option>
+      <option value="demo">Deep Intelligence Demo (4 multi-subject learners)</option>
+    </select>
+    <select id="intelLearner" onchange="loadIntelligence()"></select>
+    <select id="intelRole" onchange="refreshLearners()">
+      <option value="admin">admin</option>
+      <option value="teacher">teacher</option>
+      <option value="student">student</option>
+    </select>
+    <label class="seedlabel" for="intelRequester">as learner</label>
+    <input id="intelRequester" placeholder="X-Student-Id (student role only)" style="flex:0 1 280px">
+  </div>
+  <div class="row" style="flex-wrap:wrap;gap:6px">
+    <button class="btn secondary" onclick="askQuestion('Tell me about this student')">Profile</button>
+    <button class="btn secondary" onclick="askQuestion('Why is the behavioural state what it is')">Explain</button>
+    <button class="btn secondary" onclick="askQuestion('What data is missing for this learner')">Missing data</button>
+    <button class="btn secondary" onclick="askQuestion('Can the AI intervene autonomously')">Autonomy</button>
+    <button class="btn secondary" onclick="askQuestion('Which evidence is missing for this student?')">Gaps</button>
+    <button class="btn secondary" onclick="askQuestion('How is this student performing in algebra?')">Subject (Algebra)</button>
+    <button class="btn secondary" onclick="askQuestion('What changed over time for this student?')">Change</button>
+    <button class="btn secondary" onclick="askQuestion('Has an intervention been delivered? What happened after?')">Outcome</button>
+    <button class="btn secondary" onclick="askQuestion('What is the AI permitted to do for this learner?')">Authority</button>
+    <button class="btn secondary" onclick="askQuestion('Do the subject signals agree or contradict?')">Comparison</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <input id="customQuestion" placeholder="Ask any freeform question over the student's evidence..." style="flex:1" onkeydown="if(event.key==='Enter')askCustomQuestion()">
+    <button class="btn" onclick="askCustomQuestion()">Ask</button>
+  </div>
+  <div id="intelOutput" style="display:none;margin-top:10px"></div>
+</div>
+
+<footer>
+  Synthetic data only. Not real student data. Deterministic replay via FixedClock(2026-06-15T00:00:00 UTC).
+</footer>
+</div>
+
+<script>
+const STAGES=[
+  {key:'events',      label:'EVENTS'},
+  {key:'context',     label:'CONTEXT'},
+  {key:'features',    label:'FEATURES'},
+  {key:'baseline',    label:'BASELINE'},
+  {key:'temporal',    label:'TEMPORAL'},
+  {key:'prediction',  label:'PREDICTION'},
+  {key:'uncertainty', label:'UNCERTAINTY'},
+  {key:'policy',      label:'POLICY'},
+  {key:'intervention',label:'INTERVENTION'},
+  {key:'outcome',     label:'OUTCOME'},
+  {key:'evaluation',  label:'EVALUATION'},
+];
+
+let scenarios=[];
+let selectedScenario=null;
+
+async function init(){
+  const r=await fetch('/api/scenarios');
+  scenarios=await r.json();
+  const grid=document.getElementById('cards');
+  grid.innerHTML=scenarios.map(s=>`
+    <div class="card" data-id="${s.id}" onclick="selectScenario('${s.id}')">
+      <h3>${s.title}</h3>
+      <div class="arch">${s.sessions} sessions · ${s.questions_per_session} questions each · every ${s.session_stride_hours}h</div>
+      <div class="desc">${s.description}</div>
+    </div>`).join('');
+  initIntelligence();
+}
+
+// --- Student Intelligence -------------------------------------------------
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function intelHeaders(extra){
+  const headers={...extra};
+  const role=document.getElementById('intelRole').value;
+  const requester=document.getElementById('intelRequester').value.trim();
+  if(role)headers['X-Student-Role']=role;
+  if(requester)headers['X-Student-Id']=requester;
+  return headers;
+}
+
+function isDemoStore(){
+  const sel=document.getElementById('intelStore');
+  return sel && sel.value==='demo';
+}
+
+async function initIntelligence(){
+  await refreshLearners();
+}
+
+async function refreshLearners(){
+  const isDemo=isDemoStore();
+  const endpoint=isDemo?'/api/intelligence-demo':'/api/students';
+  const r=await fetch(endpoint,{headers:intelHeaders()});
+  const sel=document.getElementById('intelLearner');
+  if(!r.ok){
+    sel.innerHTML='<option value="">no access under this role</option>';
+    return;
+  }
+  const rows=await r.json();
+  sel.innerHTML=rows.map(l=>`<option value="${esc(l.learner_id)}">${esc(l.learner_id)} — ${esc(l.title)}</option>`).join('');
+  if(!rows.length){
+    sel.innerHTML='<option value="">no learners visible under this role</option>';
+  } else {
+    loadIntelligence();
+  }
+}
+
+async function loadIntelligence(){
+  const isDemo=isDemoStore();
+  const learner=document.getElementById('intelLearner').value;
+  const out=document.getElementById('intelOutput');
+  out.style.display='block';
+  if(!learner){out.innerHTML='<div class="bad">No learner visible; choose a role with access.</div>';return;}
+  out.innerHTML=`<div class="answer-block"><pre>Loading profile…</pre></div>`;
+  const endpoint=isDemo?`/api/intelligence-demo/${learner}`:`/api/students/${learner}/intelligence`;
+  const r=await fetch(endpoint,{headers:intelHeaders()});
+  const data=await r.json();
+  if(!r.ok){out.innerHTML=`<div class="bad">${r.status}: ${esc(data.detail||data)}</div>`;return;}
+  renderIntelligence(data);
+}
+
+async function askQuestion(q){
+  const isDemo=isDemoStore();
+  const learner=document.getElementById('intelLearner').value;
+  const out=document.getElementById('intelOutput');
+  out.style.display='block';
+  if(!learner){out.innerHTML='<div class="bad">No learner visible; choose a role with access.</div>';return;}
+  out.innerHTML=`<div class="answer-block"><h3>${esc(q)}</h3><pre>Thinking…</pre></div>`;
+  const endpoint=isDemo?`/api/intelligence-demo/${learner}/query`:`/api/students/${learner}/query`;
+  const r=await fetch(endpoint,{method:'POST',headers:intelHeaders({'Content-Type':'application/json'}),body:JSON.stringify({question:q})});
+  const data=await r.json();
+  if(!r.ok){out.innerHTML=`<div class="bad">${r.status}: ${esc(data.detail||data)}</div>`;return;}
+  renderAnswer(data);
+}
+
+function askCustomQuestion(){
+  const input=document.getElementById('customQuestion');
+  const q=input.value.trim();
+  if(q){
+    askQuestion(q);
+  }
+}
+
+function renderAnswer(a){
+  const standing=a.refused?`<span class="badge err">refused</span>`
+    :`<span class="badge ok">${esc(a.answer_type||'')}</span> <span class="badge off">conf ${esc(a.confidence||'n/a')}</span> <span class="badge off">quality ${esc(a.evidence_quality||'n/a')}</span>`;
+  let h=`<div class="answer-block">`;
+  h+=`<div class="entry-row"><span class="badge info">${esc(a.intent)}</span> ${standing} <span class="badge off">learner ${esc(a.student)}</span></div>`;
+  h+=`<pre>${esc(a.answer)}</pre>`;
+  if(a.refusal_reason) h+=`<div class="entry-row"><span class="badge warn">reason</span> <span class="mid">${esc(a.refusal_reason)}</span></div>`;
+  if(a.sources&&a.sources.length) h+=`<div class="entry-row"><span class="badge off">sources</span> <span class="v">${a.sources.map(esc).join(' · ')}</span></div>`;
+  if(a.data_gaps&&a.data_gaps.length) h+=`<div class="entry-row"><span class="badge off">gaps</span> <span class="v">${a.data_gaps.map(g=>`${esc(g.gap_type)} p${g.priority}`).join(', ')}</span></div>`;
+  h+=`</div>`;
+  document.getElementById('intelOutput').innerHTML=h;
+}
+
+function renderIntelligence(d){
+  let h=`<div class="answer-block">`;
+  h+=`<div class="entry-row"><span class="badge info">profile</span> <span class="v">${esc(d.learner_id)} — ${esc(d.title)}</span> <span class="badge off">gen ${esc(d.archetype)}</span></div>`;
+  if(d.engine_versions){
+    h+=`<div class="entry-row"><span class="badge off">engine</span> <span class="v">${Object.entries(d.engine_versions).map(([k,v])=>`${k}=${esc(v)}`).join(' · ')}</span></div>`;
+  }
+  h+=`<div class="label">Evidence (scoped to role)</div><div class="entry">`;
+  for(const rec of d.evidence){
+    const standing=rec.evidence_class==='observed'?'ok':rec.evidence_class==='predicted'?'err':'info';
+    h+=`<div class="entry-row"><span class="badge ${standing}">${esc(rec.evidence_class)}</span> `
+      +`<span class="badge off">${esc(rec.kind)}</span> `
+      +`<span class="badge off">rel ${esc(rec.reliability)}</span>`
+      +`<span class="v">${esc(rec.statement)}</span></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="label">Data gaps (in priority order)</div><div class="entry">`;
+  for(const g of d.gaps){
+    h+=`<div class="entry-row"><span class="badge ${g.priority<=2?'err':g.priority<=5?'warn':'info'}">p${g.priority}</span> `
+      +`<span class="badge off">${esc(g.gap_type)}</span>`
+      +`<span class="v">${esc(g.description)}</span></div>`;
+  }
+  h+=`</div></div>`;
+  document.getElementById('intelOutput').innerHTML=h;
+}
+
+function selectScenario(id){
+  selectedScenario=id;
+  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('selected',c.dataset.id===id));
+  document.getElementById('rawJson').value='';
+  document.getElementById('validationOutput').style.display='none';
+  analyseScenario(id);
+}
+
+async function analyseScenario(id){
+  showLoading();
+  const r=await fetch('/api/analyse/scenario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenario_id:id})});
+  const data=await r.json();
+  data.scenario=scenarios.find(s=>s.id===id);
+  renderResults(data);
+}
+
+// The root-shape findings and the per-event findings answer different questions, so they
+// are rendered as separate labelled groups rather than one flat list. Merging them was what
+// made a single-event paste look like "no events supplied": the consequence (empty dataset)
+// buried the cause (you sent an object, we need a collection).
+const SHAPE_LABEL={
+  bare_array:'JSON array of events',
+  envelope:'object with an "events" array',
+  single_event:'a single event object',
+  unrecognised:'object that is not an event and has no "events" key',
+  invalid_json:'not valid JSON',
+  not_a_collection:'a JSON value that cannot hold events',
+};
+
+function findingRow(f){
+  const cls=f.severity==='error'?'bad':f.severity==='warning'?'mid':'v';
+  const badge=f.severity==='error'?'err':f.severity==='warning'?'warn':'ok';
+  const d=f.detail||{};
+  // Show where the problem is and what the engine expected. A field path without the
+  // expected schema leaves the reader guessing which of eighteen payload types they
+  // should be holding, and the whole point of a typed payload is that the answer is exact.
+  let row=`<div class="entry-row"><span class="badge ${badge}">${f.severity}</span> `;
+  if(f.index!==null&&f.index!==undefined) row+=`<span class="badge off">event ${f.index}</span> `;
+  row+=`<span class="${cls}"><code>${f.code}</code> ${f.message}</span></div>`;
+  if(d.field) row+=`<div class="entry-row"><span class="badge off">field</span> <span class="v"><code>${d.field}</code></span></div>`;
+  if(d.expected_schema) row+=`<div class="entry-row"><span class="badge off">expected</span> <span class="v"><code>${d.expected_schema}</code></span></div>`;
+  if(d.received!==undefined) row+=`<div class="entry-row"><span class="badge off">received</span> <span class="v"><code>${d.received}</code></span></div>`;
+  return row;
+}
+
+async function insertCanonicalExample(){
+  const r=await fetch('/api/canonical_example');
+  const d=await r.json();
+  document.getElementById('rawJson').value=JSON.stringify(d,null,2);
+  document.getElementById('learnerId').value=d.learner_id;
+  document.getElementById('sessionId').value=d.session_id;
+}
+
+async function generateSampleSession(){
+  const raw=document.getElementById('seedInput').value;
+  const seed=parseInt(raw,10);
+  const r=await fetch(`/api/sample_session?seed=${Number.isNaN(seed)?424242:seed}&questions=4`);
+  const d=await r.json();
+  document.getElementById('rawJson').value=JSON.stringify(d.events.length?{events:d.events}:d,null,2);
+  document.getElementById('learnerId').value=d.learner_id;
+  document.getElementById('sessionId').value=d.session_id;
+}
+
+function renderValidation(data){
+  const el=document.getElementById('validationOutput');
+  el.style.display='block';
+  // /api/validate returns {root_shape, parse_findings, report}; the 422 from
+  // /api/analyse/paste inlines the same numbers as flat keys. Normalise both to one shape
+  // so the reader sees identical accounting whichever route they used.
+  const r=data.report||data;
+  const parse=data.parse_findings||[];
+  const findings=r.findings||[];
+  const submitted=r.events_submitted??0, accepted=r.events_accepted??0, rejected=r.events_rejected??0;
+  const errors=findings.filter(f=>f.severity==='error').length+parse.filter(f=>f.severity==='error').length;
+  const warnings=findings.filter(f=>f.severity==='warning').length+parse.filter(f=>f.severity==='warning').length;
+
+  let html=`<div class="stage-head" style="border:none;padding:0 0 6px"><h3>Input</h3>`;
+  html+=`<span class="badge info">${SHAPE_LABEL[data.root_shape]||data.root_shape||'unknown'}</span></div>`;
+  html+=`<div style="margin-bottom:8px">`
+    +`<span class="badge info">Received: ${submitted}</span> `
+    +`<span class="badge ${accepted===submitted?'ok':'warn'}">Accepted: ${accepted}</span> `
+    +`<span class="badge ${rejected?'err':'ok'}">Rejected: ${rejected}</span> `
+    +`<span class="badge ${errors?'err':'ok'}">Errors: ${errors}</span> `
+    +`<span class="badge ${warnings?'warn':'ok'}">Warnings: ${warnings}</span></div>`;
+
+  if(parse.length){
+    // Parse findings are the cause. Rendered first, and explicitly labelled as the cause.
+    html+=`<div class="entry"><div class="entry-head">Why the payload was read this way</div>`;
+    html+=parse.map(findingRow).join('');
+    html+=`</div>`;
+  }
+  if(findings.length){
+    // Event findings are downstream of a successful parse, so anything here is a
+    // consequence or a per-event problem, never the root shape.
+    html+=`<div class="entry"><div class="entry-head">${parse.length?'Consequences and per-event findings':'Event findings'}</div>`;
+    html+=findings.map(findingRow).join('');
+    html+=`</div>`;
+  }
+  if(!parse.length&&!findings.length){
+    html+=`<div class="entry"><div class="entry-row"><span class="badge ok">ok</span> <span class="v">No findings.</span></div></div>`;
+  }
+  el.innerHTML=html;
+}
+
+async function analysePaste(){
+  const raw=document.getElementById('rawJson').value.trim();
+  if(!raw){alert('Paste some JSON first.');return;}
+  const lid=document.getElementById('learnerId').value.trim()||'paste-user-0001';
+  const sid=document.getElementById('sessionId').value.trim()||'paste-sess-0001';
+  showLoading();
+  const r=await fetch('/api/analyse/paste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({learner_id:lid,session_id:sid,raw_json:raw})});
+  if(!r.ok){
+    const err=await r.json();
+    // A 422 here is a diagnosed refusal, not an opaque server error: render the same
+    // accounting the validate route shows so the cause is visible in place.
+    if(err.detail&&(err.detail.findings||err.detail.parse_findings)) return renderValidation(err.detail);
+    document.getElementById('validationOutput').style.display='block';
+    document.getElementById('validationOutput').innerHTML=`<div class="badge err">Error</div> <span>${err.detail?.error||'Request failed'}</span>`
+      +(err.detail?.message?`<div class="entry-row"><span class="mid">${err.detail.message}</span></div>`:'');
+    return;
+  }
+  const data=await r.json();
+  renderResults(data);
+}
+
+async function validatePaste(){
+  const raw=document.getElementById('rawJson').value.trim();
+  if(!raw){return;}
+  const lid=document.getElementById('learnerId').value.trim()||'paste-user-0001';
+  const sid=document.getElementById('sessionId').value.trim()||'paste-sess-0001';
+  const r=await fetch('/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({learner_id:lid,session_id:sid,raw_json:raw})});
+  const data=await r.json();
+  renderValidation(data);
+}
+
+function showLoading(){
+  const el=document.getElementById('results');
+  el.style.display='block';
+  document.getElementById('modelInfo').style.display='none';
+  const tl=document.getElementById('timeline');
+  tl.innerHTML=STAGES.map(s=>`<div class="tl-item" data-key="${s.key}">${s.label}</div>`).join('');
+  document.getElementById('stages').innerHTML=`<div class="empty">Running pipeline...</div>`;
+}
+
+function renderResults(data){
+  const el=document.getElementById('results');
+  el.style.display='block';
+  const log=data.response.stage_log;
+  const logMap={};log.forEach(s=>logMap[s.stage]=s);
+
+  document.getElementById('intent').innerHTML=renderIntent(data);
+
+  const tl=document.getElementById('timeline');
+  tl.innerHTML=STAGES.map(s=>{
+    const d=logMap[s.key]?.detail;
+    return `<div class="tl-item ${stageRevealed(s.key,d)?'done':'unavail'}" data-key="${s.key}">${s.label}</div>`;
+  }).join('');
+
+  const stagesEl=document.getElementById('stages');
+  stagesEl.innerHTML='';
+  STAGES.forEach((s,i)=>{
+    // The stage record is {stage, title, detail, entries?}; the renderers read the
+    // *detail* payload. Passing the record itself made every field read as undefined,
+    // which rendered EVENTS and CONTEXT as a column of "null" and then threw on
+    // FEATURES when d.values.filter was reached — the pipeline silently stopped at
+    // stage three. Unwrap here, once, so the renderers can keep taking a payload.
+    const rec=logMap[s.key];
+    const div=document.createElement('div');
+    div.className=`stage ${rec && stageRevealed(s.key,rec.detail)?'':'unavail'}`;
+    div.innerHTML=renderStage(i+1,s.key,s.label,rec?rec.detail:null);
+    stagesEl.appendChild(div);
+  });
+
+  renderModelInfo(data.model_summary,data.question_count);
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderStage(num,key,label,data){
+  if(!data) return `<div class="stage-head"><span class="num">${num}.</span><h3>${label}</h3><span class="badge off">missing</span></div>`;
+  const badge=stageBadge(key,data);
+  let html=`<div class="stage-head"><span class="num">${num}.</span><h3>${label}</h3>${badge}</div>`;
+  html+=`<div class="stage-detail">${stageBody(key,data)}</div>`;
+  return html;
+}
+
+// Outcome-bearing stages (INTERVENTION, OUTCOME, EVALUATION) are only revealed once the
+// pipeline actually crossed the delivery boundary. INTERVENTION is always reached; the
+// other two are unreached when nothing was delivered and cannot be measured.
+function stageRevealed(key,d){
+  if(key==='intervention') return !!(d && d.status);
+  if(key==='outcome') return !!(d && d.measured);
+  if(key==='evaluation') return !!(d && d.assessed);
+  return !!d;
+}
+
+function stageBadge(key,d){
+  if(key==='prediction'){
+    return d.outcome==='Prediction'?`<span class="badge ok">Prediction</span>`:`<span class="badge warn">Refused</span>`;
+  }
+  if(key==='uncertainty'){
+    const v=d.verdict;
+    const cls=v==='resolved'?'ok':v==='refused'?'warn':'err';
+    return `<span class="badge ${cls}">${v}</span>`;
+  }
+  if(key==='policy'){
+    const cls=d.decision==='intervene'?'ok':'ok';
+    return `<span class="badge ${d.decision==='intervene'?'ok':'info'}">${d.decision}</span>`;
+  }
+  if(key==='temporal'){
+    const cls=d.state==='insufficient_data'?'warn':d.state.includes('deviation')?'err':'ok';
+    return `<span class="badge ${cls}">${d.state}</span>`;
+  }
+  if(key==='baseline'){
+    const cls=d.maturity==='new'?'warn':d.maturity==='established'?'ok':'info';
+    return `<span class="badge ${cls}">${d.maturity}</span>`;
+  }
+  if(key==='intervention'){
+    if(d.status==='DELIVERED') return `<span class="badge ok">${d.status}</span>`;
+    if(d.status==='SELECTED_NOT_DELIVERED') return `<span class="badge warn">${d.status}</span>`;
+    return `<span class="badge info">${d.status}</span>`;
+  }
+  if(key==='outcome'){
+    if(d.status==='MEASURED') return `<span class="badge ok">${d.status}</span>`;
+    return `<span class="badge warn">${d.status||'unmeasured'}</span>`;
+  }
+  if(key==='evaluation'){
+    if(d.status==='INSUFFICIENT_DATA') return `<span class="badge warn">${d.status}</span>`;
+    const cls=d.status==='correct'?'ok':'err';
+    return `<span class="badge ${cls}">${d.status}</span>`;
+  }
+  return '';
+}
+
+function stageBody(key,d){
+  const kv=(k,v,cls='')=>`<div class="entry-row"><span class="k">${k}</span><span class="v ${cls}">${v===null||v===undefined?'null':v}</span></div>`;
+
+  if(key==='events'){
+    let h=kv('Total events',d.total_events);
+    h+=kv('Answered questions',d.answered_questions);
+    h+=kv('Sessions',d.session_count);
+    h+=kv('Learner ID',d.learner_id);
+    if(d.sessions){
+      h+=`<table><tr><th>#</th><th>Session</th><th>Events</th><th>Start</th><th>End</th></tr>`;
+      d.sessions.forEach((s,i)=>{h+=`<tr><td>${i+1}</td><td><code>${s.session_id}</code></td><td>${s.events} (${s.answered} answered)</td><td>${fmtTs(s.started)}</td><td>${fmtTs(s.ended)}</td></tr>`;});
+      h+=`</table>`;
+    }
+    return h;
+  }
+  if(key==='context'){
+    let h=kv('Session',`<code>${d.session_id}</code>`);
+    h+=kv('Elapsed',d.elapsed_seconds?.toFixed(1)+'s');
+    h+=kv('Position',d.position_in_session?.toFixed(2));
+    h+=kv('Recent accuracy',d.recent_accuracy?.toFixed(3),d.recent_accuracy>=0.6?'good':d.recent_accuracy<0.4?'bad':'mid');
+    h+=kv('Avg response',d.average_response_seconds?.toFixed(1)+'s');
+    if(d.missing?.length) h+=kv('Missing',d.missing.join(', '),'mid');
+    if(d.blocking_missing?.length) h+=kv('Blocking',d.blocking_missing.join(', '),'bad');
+    return h;
+  }
+  if(key==='features'){
+    let h=kv('Feature set',d.feature_set);
+    h+=kv('Computed at',fmtTs(d.computed_at));
+    h+=kv('Session',`<code>${d.session_id}</code>`);
+    const inModel=d.values.filter(v=>v.in_model);
+    const excluded=d.values.filter(v=>!v.in_model);
+    h+=`<div style="margin-top:8px;font-weight:600">Features used by the model (${inModel.length} of ${d.values.length})</div>`;
+    inModel.forEach(v=>{
+      const cls=v.availability==='available'?'good':v.availability==='insufficient_data'?'bad':'mid';
+      h+=kv(v.name,`${typeof v.value==='number'?v.value.toFixed(4):v.value} <span class="badge ${cls}">${v.availability}</span>`);
+      if(v.reason) h+=`<div class="restraint" style="margin-left:130px"><span class="v" style="color:var(--dim)">${v.reason}</span></div>`;
+    });
+    if(excluded.length){
+      h+=`<div style="margin-top:10px;font-weight:600">Computed but not in the lab model (${excluded.length})</div>`;
+      h+=`<div class="entry">`;
+      excluded.forEach(v=>{h+=`<div class="entry-row"><span class="k">${v.name}</span><span class="v" style="color:var(--dim)">${typeof v.value==='number'?v.value.toFixed(4):v.value} <span class="badge off">${v.availability}</span></span></div>`;});
+      h+=`</div>`;
+    }
+    return h;
+  }
+  if(key==='baseline'){
+    let h=kv('Sessions folded in',d.sessions_folded_in);
+    h+=kv('Observations retained',d.observations);
+    h+=kv('Overall maturity',d.maturity);
+    h+=kv('Settings fingerprint',`<code>${String(d.settings_fingerprint||'').slice(0,12)}</code>`);
+    if(d.note) h+=`<div style="margin-top:6px;font-style:italic;color:var(--dim);font-size:.78rem">${d.note}</div>`;
+    h+=`<div style="margin-top:8px;font-weight:600">Dimensions</div>`;
+    Object.entries(d.dimensions).forEach(([k,v])=>{
+      const cls=v.maturity==='established'?'good':v.maturity==='new'?'mid':'v';
+      h+=`<div class="entry-row"><span class="k">${k}</span><span class="v">centre ${v.centre.toFixed(4)} / spread ${v.spread.toFixed(4)} / obs ${v.observations} <span class="badge ${cls}">${v.maturity}</span><br><span style="color:var(--dim);font-size:.75rem">source: ${v.source}</span></span></div>`;
+    });
+    return h;
+  }
+  if(key==='temporal'){
+    let h=kv('State',d.state);
+    h+=kv('Direction',d.direction);
+    h+=kv('Character',d.character);
+    h+=kv('Change',d.change);
+    h+=kv('Run length',d.run_length);
+    h+=kv('Consecutive evidence',d.evidence_consecutive);
+    h+=kv('Evidence observations',d.evidence_observations);
+    h+=kv('Evidence maturity',d.evidence_maturity);
+    h+=kv('Mean standardised deviation',d.mean_standardised!=null?d.mean_standardised.toFixed(4):'null',d.mean_standardised==null?'mid':d.mean_standardised<0?'good':'bad');
+    h+=kv('Dispersion',d.dispersion!=null?d.dispersion.toFixed(4):'null');
+    h+=kv('Learner',`<code>${d.learner_id}</code>`);
+    h+=kv('Reference time',fmtTs(d.reference_time));
+    h+=kv('Settings fingerprint',`<code>${String(d.settings_fingerprint||'').slice(0,12)}</code>`);
+    h+=`<div style="margin-top:8px;font-style:italic;color:var(--dim);font-size:.78rem">One observation is folded per session: the session vector updates the rolling baseline first, then the deviation is measured against it.</div>`;
+    return h;
+  }
+  if(key==='prediction'){
+    if(d.outcome==='Prediction'){
+      let h=kv('Probability',d.probability.toFixed(4),d.is_positive?'bad':'good');
+      h+=kv('Positive',d.is_positive?'yes <span class="badge bad">at risk</span>':'no <span class="badge good">stable</span>');
+      h+=kv('Threshold',d.threshold);
+      h+=kv('Model',`<code>${d.model_id}</code> · ${d.model_version}`);
+      h+=kv('Feature set',d.feature_set);
+      h+=kv('Computed at',fmtTs(d.computed_at));
+      if(d.model?.caveat) h+=`<div style="margin-top:6px;font-style:italic;color:var(--warn);font-size:.78rem">${d.model.caveat}</div>`;
+      return h;
+    }
+    let h=kv('Outcome',`<span class="badge warn">${d.outcome}</span>`);
+    h+=kv('Missing features',(d.missing_features||[]).join(', '),'bad');
+    h+=kv('Computed at',fmtTs(d.computed_at));
+    h+=`<div style="margin-top:6px;font-size:.8rem;line-height:1.5">${d.reason}</div>`;
+    if(d.note) h+=`<div style="margin-top:6px;font-style:italic;color:var(--warn);font-size:.78rem">${d.note}</div>`;
+    return h;
+  }
+  if(key==='uncertainty'){
+    let h=kv('Verdict',d.verdict);
+    h+=kv('Confidence',d.confidence);
+    h+=kv('Remedy',d.remedy);
+    h+=kv('Basis',d.basis);
+    h+=kv('Maturity',d.maturity);
+    h+=kv('Evidence units',d.evidence_units);
+    h+=kv('Computed at',fmtTs(d.computed_at));
+    if(d.refusal_reason) h+=kv('Refusal reason',d.refusal_reason,'bad');
+    if(d.missing_features?.length) h+=kv('Missing features',d.missing_features.join(', '),'bad');
+    if(d.confidence_assessment){
+      const ca=d.confidence_assessment;
+      h+=`<div style="margin-top:10px;font-weight:600">Confidence assessment</div>`;
+      h+=kv('Level',`${ca.level} <span class="badge ${ca.level==='high'?'ok':ca.level==='low'?'warn':'err'}">${ca.level}</span>`);
+      h+=kv('Binding constraint',ca.binding_constraint,'bad');
+      h+=kv('Calibrated value',ca.value?.toFixed(4));
+      h+=kv('Model assertion',ca.model_assertion?.toFixed(4));
+      h+=kv('Calibration ceiling',ca.calibration_ceiling?.toFixed(4));
+      h+=kv('Evidence ceiling',ca.evidence_ceiling?.toFixed(4));
+      h+=kv('Maturity ceiling',ca.maturity_ceiling?.toFixed(4));
+      h+=kv('Explanation capped',ca.explanation_capped);
+    }
+    if(d.explanation){
+      h+=`<div style="margin-top:10px;font-weight:600">Explanation</div>`;
+      h+=kv('Base probability',d.explanation.base_probability?.toFixed(4));
+      h+=kv('Reason',d.explanation.reason);
+      if(d.explanation.top_contributions?.length){
+        h+=`<table><tr><th>Feature</th><th>Contribution</th><th></th></tr>`;
+        d.explanation.top_contributions.forEach(c=>{
+          h+=`<tr><td>${c.feature}</td><td class="${c.contribution>0?'bad':'good'}">${c.contribution>0?'+':''}${c.contribution.toFixed(4)}</td><td class="${c.contribution>0?'bad':'good'}">${c.contribution>0?'pushes toward at-risk':'pushes toward stable'}</td></tr>`;
+        });
+        h+=`</table>`;
+        h+=`<div style="margin-top:4px;font-size:.75rem;color:var(--dim)">Contributions are relative to the base rate, not causal claims.</div>`;
+      }
+      if(d.explanation.omitted?.length) h+=kv('Omitted below threshold',d.explanation.omitted.join(', '),'mid');
+    }
+    return h;
+  }
+  if(key==='policy'){
+    const fired=d.decision==='intervene';
+    let h=kv('Decision',`${d.decision} <span class="badge ${fired?'ok':'info'}">${fired?'would intervene':'holds'}</span>`);
+    h+=kv('Selected',d.selected);
+    h+=kv('Intervention type',d.intervention_type||'none');
+    h+=kv('Reason',d.reason);
+    if(d.detail) h+=`<div style="margin-top:4px;font-size:.8rem;line-height:1.5">${d.detail}</div>`;
+    h+=kv('Upstream verdict',d.upstream_verdict);
+    h+=kv('Policy version',d.policy_version);
+    h+=kv('Evaluated at',fmtTs(d.evaluated_at));
+    if(d.restraints?.length){
+      h+=`<div style="margin-top:10px;font-weight:600">Restraints checked (${d.restraints.length})</div>`;
+      d.restraints.forEach(r=>{
+        h+=`<div class="restraint"><span class="k">${r.kind}</span><span class="v"><span class="badge ${r.binding?'err':'ok'}">${r.binding?'binding':'cleared'}</span> <span style="color:var(--dim)">limit ${r.limit} · observed ${typeof r.observed==='number'?r.observed.toFixed(4):r.observed} · headroom ${r.headroom!=null?r.headroom.toFixed(4):'n/a'}</span></span></div>`;
+      });
+    }
+    if(d.excluded?.length) h+=kv('Excluded',d.excluded.join(', '),'mid');
+    h+=`<div style="margin-top:8px;font-style:italic;color:var(--dim);font-size:.78rem">A policy decision is not a delivery. The next stage exists to say so out loud.</div>`;
+    return h;
+  }
+  if(key==='intervention'){
+    let h=kv('Status',`${d.status_label||d.status} <span class="badge ${d.delivered?'ok':d.status==='SELECTED_NOT_DELIVERED'?'warn':'info'}">${d.delivered?'delivered':'not delivered'}</span>`);
+    h+=kv('Gate',d.gate||'—');
+    h+=kv('Intervention',d.intervention_type||'none');
+    h+=kv('Dev-only boundary',d.dev_only?'<span class="badge info">dev only</span>':'no','mid');
+    if(d.intervention_id) h+=kv('Intervention ID',`<code>${d.intervention_id}</code>`);
+    if(d.started_at) h+=kv('Started at',fmtTs(d.started_at));
+    if(d.delivered_at) h+=kv('Delivered at',fmtTs(d.delivered_at));
+    h+=kv('Final action',d.final_action||'—');
+    h+=kv('Requires human approval',d.requires_human_approval?'<span class="badge warn">yes</span>':'<span class="badge ok">no</span>');
+    h+=`<div style="margin-top:4px;font-size:.8rem;line-height:1.5">${d.reason}</div>`;
+    if(d.lifecycle_events?.length){
+      h+=`<div style="margin-top:10px;font-weight:600">Lifecycle events (${d.lifecycle_event_count})</div>`;
+      d.lifecycle_events.forEach(e=>{
+        const p=e.payload||{};
+        h+=`<div class="entry-row"><span class="k">${e.event_type}</span><span class="v">${p.outcome||''} ${p.trigger_state?`· state ${p.trigger_state}`:''}${p.trigger_probability!=null?` · p=${p.trigger_probability.toFixed(4)}`:''} <span class="badge off">${e.provenance}</span><br><span style="color:var(--dim);font-size:.75rem">${e.event_id} · ${fmtTs(e.timestamp)}</span></span></div>`;
+      });
+    }
+    return h;
+  }
+  if(key==='outcome'){
+    if(!d.measured){
+      let h=kv('Measured',d.measured?'<span class="badge ok">yes</span>':'<span class="badge warn">no</span>');
+      h+=kv('Status',`<code>${d.status}</code>`);
+      h+=`<div style="margin-top:4px;font-size:.8rem;line-height:1.5">${d.reason}</div>`;
+      return h;
+    }
+    let h=kv('Response class',d.response_class);
+    h+=kv('Intervention',`${d.intervention_type} <code>${d.intervention_id}</code>`);
+    h+=kv('Delivered at',fmtTs(d.delivered_at));
+    h+=kv('Measured',`${d.measures_measured} of ${d.measures_total} measures`);
+    h+=kv('Complete',d.is_complete?'<span class="badge ok">yes</span>':'<span class="badge warn">no — ${d.limitation}</span>');
+    const w=d.window||{};
+    if(w.before&&w.after){
+      h+=kv('Window',`${fmtTs(w.before.start)} → ${fmtTs(w.after.end)}`);
+    }
+    if(d.measurements?.length){
+      h+=`<div style="margin-top:10px;font-weight:600">Measurements (${d.measures_measured}/${d.measures_total})</div>`;
+      d.measurements.forEach(m=>{
+        const cls=m.status==='measured'?'good':'mid';
+        h+=`<div class="entry-row"><span class="k">${m.measure}</span><span class="v">${m.before_value!=null?m.before_value.toFixed(4):'n/a'} → ${m.after_value!=null?m.after_value.toFixed(4):'n/a'} <span class="badge ${cls}">${m.status}</span><br><span style="color:var(--dim);font-size:.75rem">before samples ${m.before_samples} · after samples ${m.after_samples} ${m.reason?'· '+m.reason:''}</span></span></div>`;
+      });
+    }
+    if(d.summary) h+=kv('Engine summary',`<code>${JSON.stringify(d.summary)}</code>`);
+    if(d.note) h+=`<div style="margin-top:6px;font-style:italic;color:var(--dim);font-size:.78rem">${d.note}</div>`;
+    return h;
+  }
+  if(key==='evaluation'){
+    if(!d.assessed){
+      let h=kv('Assessed',d.assessed?'<span class="badge ok">yes</span>':'<span class="badge warn">no</span>');
+      h+=kv('Status',`<code>${d.status}</code>`);
+      h+=`<div style="margin-top:4px;font-size:.8rem;line-height:1.5">${d.reason}</div>`;
+      return h;
+    }
+    const verdictCls=d.status==='correct'?'ok':d.status==='incorrect'?'err':'mid';
+    let h=kv('Verdict',`${d.verdict} <span class="badge ${verdictCls}">${d.verdict}</span>`);
+    h+=kv('Binary verdict',d.binary_verdict);
+    h+=kv('Ground truth',d.ground_truth_status);
+    if(d.observed_state) h+=kv('Observed state',d.observed_state);
+    if(d.observed_direction) h+=kv('Observed direction',d.observed_direction);
+    if(d.intervention_response) h+=kv('Intervention response',d.intervention_response);
+    h+=kv('Evidence count',d.evidence_count);
+    h+=kv('Model',`<code>${d.model_id}</code> v${d.model_version}`);
+    h+=kv('Evaluator',d.evaluator_version);
+    h+=`<div style="margin-top:4px;font-size:.8rem;line-height:1.5">${d.reason}</div>`;
+    const hz=d.horizon||{};
+    if(hz.start&&hz.end) h+=kv('Horizon',`${fmtTs(hz.start)} → ${fmtTs(hz.end)}`);
+    if(d.reading?.note) h+=`<div style="margin-top:6px;font-style:italic;color:var(--dim);font-size:.78rem">${d.reading.note}</div>`;
+    return h;
+  }
+  return `<pre style="white-space:pre-wrap">${JSON.stringify(d,null,2)}</pre>`;
+}
+
+function renderModelInfo(model,count){
+  if(!model)return;
+  const el=document.getElementById('modelInfo');
+  el.style.display='block';
+  let h=`<h2>Model provenance</h2><div class="stage-detail">`;
+  h+=kv('Model',`<code>${model.model_id}</code> v${model.model_version}`);
+  h+=kv('Algorithm',model.algorithm);
+  h+=kv('Feature set',model.feature_set);
+  h+=kv('Target',model.target_definition);
+  h+=kv('Corpus sessions',model.corpus_sessions);
+  h+=kv('Train rows',model.train_rows);
+  h+=kv('Holdout rows',model.holdout_rows);
+  h+=kv('Holdout Brier',model.holdout_brier!=null?model.holdout_brier.toFixed(4):'null');
+  h+=kv('Holdout ECE',model.holdout_ece!=null?model.holdout_ece.toFixed(4):'null');
+  h+=`<div style="margin-top:8px;font-style:italic;color:var(--warn);font-size:.8rem">${model.caveat||''}</div>`;
+  h+=`</div>`;
+  el.innerHTML=h;
+
+  function kv(k,v,cls=''){return `<div class="entry-row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;}
+}
+
+function renderIntent(data){
+  const el=document.getElementById('intent');
+  const sc=data.scenario;
+  const log={};data.response.stage_log.forEach(s=>log[s.stage]=s.detail);
+  const t=log.temporal||{},p=log.prediction||{},u=log.uncertainty||{},pol=log.policy||{},inv=log.intervention||{},out=log.outcome||{},eval_=log.evaluation||{};
+  const predText=p.outcome==='Prediction'
+    ? `probability ${p.probability.toFixed(4)} · ${p.is_positive?'at risk':'stable'}`
+    : `refused — ${(p.missing_features||[]).join(', ')||'insufficient evidence'}`;
+  const deliveryLine=inv.status
+    ? `<strong>Delivery</strong> ${inv.status_label||inv.status}${inv.gate?` (gate: ${inv.gate})`:''}${out.status?` · outcome ${out.status}`:''}${eval_.status?` · evaluation ${eval_.status}`:''}`
+    : `<strong>Delivered</strong> <span class="badge err">no</span> · outcome and evaluation unavailable`;
+  // The observed panel and the diagnosis are shown for pasted input too. Hiding them
+  // whenever there is no scenario would hide the diagnosis exactly where a reader is most
+  // likely to be stuck: they supplied their own data and got a refusal back.
+  el.style.display='block';
+  let h=`<h2>${sc?sc.title:'Pasted input'}</h2>`;
+  if(sc){
+    h+=`<div class="label">Generated input trajectory (what was fed in)</div>`;
+    h+=`<div class="side expected">${sc.expected_behavior}</div>`;
+  }
+  h+=`<div class="label">Observed engine state (what came out)</div>`;
+  h+=`<div class="side actual">`;
+  h+=`<div><strong>Behavioural state</strong> ${t.state||'n/a'} / ${t.direction||'n/a'} (${t.character||'n/a'})</div>`;
+  h+=`<div><strong>Prediction</strong> ${predText}</div>`;
+  h+=`<div><strong>Uncertainty</strong> ${u.verdict||'n/a'} · ${u.confidence||'n/a'} confidence${u.confidence_assessment?` · binding: ${u.confidence_assessment.binding_constraint}`:''}</div>`;
+  h+=`<div><strong>Policy</strong> ${pol.decision||'n/a'} — ${pol.reason||''}</div>`;
+  h+=`<div>${deliveryLine}</div>`;
+  h+=`</div>`;
+  if(data.validation) h+=renderValidationCounts(data.validation);
+  h+=`<div class="label">Why the engine returned this (derived from stage values)</div>`;
+  h+=renderDiagnosis(data.response.diagnosis||[]);
+  if(sc){
+    h+=`<div class="label">How to read a disagreement between the two panels</div>`;
+    h+=`<div class="side expected">These are two different quantities, and a difference between them is not a failure. The left panel is a property of the generator; the right panel is what the engine concluded after folding every session into a rolling personal baseline. Because the baseline is <em>rolling</em>, each session is compared against a centre that already moved with the learner, so a steady decline is partly absorbed and can read as calm by the end. The baseline panel below shows how far each centre actually travelled, and the caveats above state the effect for this run.</div>`;
+  }
+  return h;
+}
+
+function renderValidationCounts(r){
+  const sub=r.events_submitted??0, acc=r.events_accepted??0, rej=r.events_rejected??0;
+  return `<div style="margin:8px 0">`
+    +`<span class="badge info">Received: ${sub}</span> `
+    +`<span class="badge ${acc===sub?'ok':'warn'}">Accepted: ${acc}</span> `
+    +`<span class="badge ${rej?'err':'ok'}">Rejected: ${rej}</span> `
+    +`<span class="badge ${r.error_count?'err':'ok'}">Errors: ${r.error_count}</span> `
+    +`<span class="badge ${r.warning_count?'warn':'ok'}">Warnings: ${r.warning_count}</span></div>`;
+}
+
+function renderDiagnosis(list){
+  if(!list.length) return `<div class="side actual">No diagnosis was returned.</div>`;
+  let h=`<div class="entry">`;
+  list.forEach(d=>{
+    const isConstraint=d.kind==='constraint';
+    const badge=isConstraint?'<span class="badge warn">limited</span>':'<span class="badge info">caveat</span>';
+    h+=`<div class="entry-row">${badge} <span class="v"><code>${d.category}</code> <em>(${d.stage})</em></span></div>`;
+    h+=`<div class="entry-row"><span class="mid">${d.summary}</span></div>`;
+    if(d.evidence&&Object.keys(d.evidence).length){
+      const flat={};
+      Object.entries(d.evidence).forEach(([k,v])=>{
+        if(v===null||v===undefined)return;
+        flat[k]=(typeof v==='object')?JSON.stringify(v):v;
+      });
+      h+=`<div class="entry-row"><span class="badge off">evidence</span> <span class="v"><code>${Object.entries(flat).map(([k,v])=>`${k}=${v}`).join('  ')}</code></span></div>`;
+    }
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function fmtTs(s){
+  if(!s)return '';
+  try{return new Date(s).toLocaleString();}catch{return s;}
+}
+
+init();
+</script>
+</body>
+</html>
